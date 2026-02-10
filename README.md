@@ -2,7 +2,7 @@
 
 A lightweight system monitor TUI built in Rust. Designed for monitoring GPU inference workloads on NVIDIA Jetson and similar Linux machines over SSH.
 
-![sysmon-tui screenshot](https://github.com/user-attachments/assets/placeholder.png)
+<img width="1282" height="673" alt="Screenshot 2026-02-10 at 12 27 23 PM" src="https://github.com/user-attachments/assets/c9cad83c-cf7b-4668-8a23-2c22b0fa4e36" />
 
 ## Features
 
