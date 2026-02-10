@@ -212,9 +212,7 @@ pub mod types {
 
 pub mod collector {
         use std::cmp::Ordering;
-        use sysinfo::{
-            DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt,
-        };
+        use sysinfo::System;
 
         /// Collects metrics from the underlying OS.
         pub struct Collector {
