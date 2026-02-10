@@ -136,3 +136,113 @@ pub mod types {
             pub processes: Vec<ProcessInfo>,
         }
 }
+
+pub mod collector {
+        use std::cmp::Ordering;
+        use sysinfo::{
+            DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt,
+        };
+
+        /// Collects metrics from the underlying OS.
+        pub struct Collector {
+            sys: System,
+        }
+
+        impl Collector {
+            /// Creates a new collector instance.
+            pub fn new() -> Self {
+                let mut sys = System::new_all();
+                // Initial refresh to populate data
+                let _ = sys.refresh_all();
+                Self { sys }
+            }
+
+            /// Collects a snapshot of system metrics.
+            ///
+            /// Returns `Ok(SystemMetrics)` on success or a `SysmonError` if the
+            /// underlying sysinfo library fails to refresh data.
+            pub fn collect(
+                &mut self,
+            ) -> Result<crate::core::types::SystemMetrics, crate::core::errors::SysmonError> {
+                // Refresh all data; map sysinfo errors to our error type.
+                match self.sys.refresh_all() {
+                    Ok(_) => {}
+                    Err(e) => return Err(crate::core::errors::SysmonError::SysInfo(e)),
+                }
+
+                // CPU core usage
+                let cpu = self
+                    .sys
+                    .processors()
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, proc)| crate::core::types::CpuCoreUsage {
+                        core_id: idx,
+                        usage_percent: proc.cpu_usage(),
+                    })
+                    .collect::<Vec<_>>();
+
+                // RAM usage
+                let ram = crate::core::types::RamSwapUsage {
+                    used: self.sys.used_memory() * 1024,
+                    total: self.sys.total_memory() * 1024,
+                };
+
+                // Swap usage
+                let swap = crate::core::types::RamSwapUsage {
+                    used: self.sys.used_swap() * 1024,
+                    total: self.sys.total_swap() * 1024,
+                };
+
+                // Network statistics
+                let mut net_recv = 0u64;
+                let mut net_trans = 0u64;
+                for (_name, data) in self.sys.networks() {
+                    net_recv += data.received();
+                    net_trans += data.transmitted();
+                }
+                let network = crate::core::types::NetworkStats {
+                    received_bytes: net_recv,
+                    transmitted_bytes: net_trans,
+                };
+
+                // Disk I/O statistics
+                let mut disk_read = 0u64;
+                let mut disk_write = 0u64;
+                for disk in self.sys.disks() {
+                    disk_read += disk.read_bytes();
+                    disk_write += disk.write_bytes();
+                }
+                let disk_io = crate::core::types::DiskIOStats {
+                    read_bytes: disk_read,
+                    write_bytes: disk_write,
+                };
+
+                // Process information
+                let mut processes = Vec::new();
+                for (pid, process) in self.sys.processes() {
+                    processes.push(crate::core::types::ProcessInfo {
+                        pid: pid.as_u32() as i32,
+                        name: process.name().to_string(),
+                        cpu_percent: process.cpu_usage(),
+                        mem_bytes: process.memory() * 1024,
+                    });
+                }
+                // Sort processes by CPU usage descending
+                processes.sort_by(|a, b| {
+                    b.cpu_percent
+                        .partial_cmp(&a.cpu_percent)
+                        .unwrap_or(Ordering::Equal)
+                });
+
+                Ok(crate::core::types::SystemMetrics {
+                    cpu,
+                    ram,
+                    swap,
+                    network,
+                    disk_io,
+                    processes,
+                })
+            }
+        }
+}
