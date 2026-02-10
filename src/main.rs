@@ -596,12 +596,12 @@ pub mod layout {
 pub mod app {
         use crate::errors::SysmonError;
         use crate::types::{
-            CpuCoreUsage, DiskIOStats, NetworkStats, ProcessInfo, RamSwapUsage, SortOrder,
+            DiskIOStats, NetworkStats, RamSwapUsage, SortOrder,
             SystemMetrics,
         };
         use crate::collector::Collector;
-        use crate::ui::layout::LayoutManager;
-        use crate::ui::widgets::{
+        use crate::layout::LayoutManager;
+        use crate::widgets::{
             CpuBarWidget, DiskIOBarWidget, NetworkSparklineWidget, ProcessTableWidget,
             RamGaugeWidget,
         };
