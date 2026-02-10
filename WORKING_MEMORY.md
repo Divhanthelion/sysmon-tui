@@ -17,3 +17,37 @@ Each module section contains:
 
 ---
 
+## ui::event
+
+**Trait implementations:**
+- `none`
+
+**Key signatures:**
+- ``pub fn new(tick_rate: std::time::Duration) -> Self``
+- ``pub fn run(&self`
+- `tx: std::sync::mpsc::Sender<AppEvent>)``
+
+## core::types
+
+**Notes for dependents:**
+- `CpuCoreUsage` contains a core identifier and its usage percentage.
+- `RamSwapUsage` tracks used and total bytes for RAM or swap.
+- `NetworkStats` aggregates received and transmitted byte counts.
+- `DiskIOStats` aggregates read and written byte counts.
+- `ProcessInfo` holds a process ID, name, CPU usage percentage, and memory usage in bytes.
+- `SortOrder` enum provides two variants: `Cpu` and `Mem`.
+- `SystemMetrics` aggregates all the above metrics into a single snapshot.
+
+**Key signatures:**
+- `None`
+
+## ui::layout
+
+**Notes for dependents:**
+- `LayoutManager` contains five public `Rect` fields for widget placement.
+- The layout splits the screen into a top half (CPU & RAM) and bottom half (Network, Disk, Process).
+- `new` takes a `ratatui::layout::Rect` and returns a fully populated `LayoutManager`.
+
+**Key signatures:**
+- ``pub fn new(size: Rect) -> Self``
+

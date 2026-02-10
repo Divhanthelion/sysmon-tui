@@ -105,9 +105,7 @@ pub mod event {
 
         /// Events that the application can receive.
         pub enum AppEvent {
-            /// A periodic tick event.
             Tick,
-            /// A key press event from the user.
             Input(KeyEvent),
         }
 
