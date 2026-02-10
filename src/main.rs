@@ -458,3 +458,60 @@ pub mod widgets {
             }
         }
 }
+
+pub mod layout {
+        use ratatui::layout::{Constraint, Direction, Layout, Rect};
+
+        /// Holds the rectangular areas for each widget on the screen.
+        pub struct LayoutManager {
+            pub cpu_area: Rect,
+            pub ram_area: Rect,
+            pub net_area: Rect,
+            pub disk_area: Rect,
+            pub proc_area: Rect,
+        }
+
+        impl LayoutManager {
+            /// Creates a new `LayoutManager` by dividing the given screen size into
+            /// five widget areas:
+            ///
+            /// * The top half is split horizontally into `cpu_area` and `ram_area`.
+            /// * The bottom half is split horizontally into `net_area`, `disk_area`,
+            ///   and `proc_area` (roughly 33%/33%/34%).
+            ///
+            /// # Arguments
+            ///
+            /// * `size` – The total screen area to layout.
+            pub fn new(size: Rect) -> Self {
+                // Split the screen vertically into top and bottom halves.
+                let [top, bottom] = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(size);
+
+                // Split the top half horizontally into CPU and RAM areas.
+                let [cpu_area, ram_area] = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(top);
+
+                // Split the bottom half horizontally into Network, Disk, and Process areas.
+                let [net_area, disk_area, proc_area] = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Percentage(33),
+                        Constraint::Percentage(33),
+                        Constraint::Percentage(34),
+                    ])
+                    .split(bottom);
+
+                Self {
+                    cpu_area,
+                    ram_area,
+                    net_area,
+                    disk_area,
+                    proc_area,
+                }
+            }
+        }
+}
