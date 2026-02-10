@@ -1,8 +1,81 @@
 //! A high‑performance resource monitor TUI application using ratatui, sysinfo, and crossterm. Features real‑time CPU core usage bars, RAM/Swap gauges, network throughput sparklines, disk I/O monitoring, and a searchable/sortable process list.
 
 pub mod main {
-    //! Entry point: initializes terminal, runs the event loop.
-    todo!()
+    use std::error::Error;
+    use std::time::Duration;
+    use std::sync::mpsc::{channel, Sender};
+
+    use crossterm::{
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    };
+    use ratatui::{backend::CrosstermBackend, Terminal};
+
+    use crate::ui::event::{AppEvent, EventHandler};
+    use crate::ui::app::AppState;
+
+    /// Entry point of the application.
+    ///
+    /// Initializes the terminal, spawns an event handler thread,
+    /// creates the UI state and runs a simple event loop that
+    /// updates metrics on ticks, handles key input (q to quit)
+    /// and renders the UI each iteration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if terminal initialization or rendering fails.
+    pub fn main() -> Result<(), Box<dyn Error>> {
+        // ---------- Terminal setup ----------
+        enable_raw_mode()?;
+        let mut stdout = std::io::stdout();
+        execute!(stdout, EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend)?;
+
+        // ---------- Event channel ----------
+        let (tx, rx) = channel::<AppEvent>();
+
+        // ---------- Event handler ----------
+        let event_handler = EventHandler::new(Duration::from_millis(250));
+        // The handler spawns its own thread internally.
+        event_handler.run(tx);
+
+        // ---------- Application state ----------
+        let mut app = AppState::new();
+
+        // ---------- Main loop ----------
+        loop {
+            // Render the UI
+            terminal.draw(|f| {
+                app.render(f);
+            })?;
+
+            // Handle incoming events
+            match rx.recv() {
+                Ok(event) => match event {
+                    AppEvent::Tick => {
+                        app.update_metrics();
+                    }
+                    AppEvent::Input(key) => {
+                        // Quit on 'q'
+                        if key.code == crossterm::event::KeyCode::Char('q') {
+                            break;
+                        } else {
+                            app.handle_input(key);
+                        }
+                    }
+                },
+                Err(_) => break, // channel disconnected
+            }
+        }
+
+        // ---------- Restore terminal ----------
+        disable_raw_mode()?;
+        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        terminal.show_cursor()?;
+
+        Ok(())
+    }
 }
 
 fn main() {
