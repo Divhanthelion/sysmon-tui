@@ -246,3 +246,215 @@ pub mod collector {
             }
         }
 }
+
+pub mod widgets {
+        use ratatui::{
+            Frame,
+            layout::{Rect, Layout, Constraint},
+            style::{Style, Color, Modifier},
+            widgets::{
+                Block, Borders, Gauge, Row, Table, Cell, Sparkline,
+            },
+        };
+
+        use crate::core::types::{
+            CpuCoreUsage, RamSwapUsage, DiskIOStats,
+            ProcessInfo, SortOrder,
+        };
+
+        /// Trait for widgets that can render themselves into a `ratatui::Frame`.
+        pub trait Renderable {
+            fn render(&self, area: Rect, f: &mut Frame);
+        }
+
+        /// Widget that displays a bar per CPU core.
+        pub struct CpuBarWidget {
+            pub data: Vec<CpuCoreUsage>,
+        }
+
+        impl CpuBarWidget {
+            /// Create a new `CpuBarWidget` with the given core usage data.
+            pub fn new(data: Vec<CpuCoreUsage>) -> Self {
+                Self { data }
+            }
+        }
+
+        impl Renderable for CpuBarWidget {
+            fn render(&self, area: Rect, f: &mut Frame) {
+                if self.data.is_empty() {
+                    return;
+                }
+                let chunks = Layout::vertical(
+                    self.data.iter().map(|_| Constraint::Length(1)).collect::<Vec<_>>(),
+                )
+                .split(area);
+
+                for (i, core) in self.data.iter().enumerate() {
+                    let gauge = Gauge::default()
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .title(format!("Core {}", core.core_id)),
+                        )
+                        .gauge_style(Style::default().fg(Color::Green))
+                        .percent(core.usage_percent as u16);
+                    f.render_widget(gauge, chunks[i]);
+                }
+            }
+        }
+
+        /// Widget that displays RAM usage as a gauge.
+        pub struct RamGaugeWidget {
+            pub data: RamSwapUsage,
+        }
+
+        impl RamGaugeWidget {
+            /// Create a new `RamGaugeWidget` with the given RAM usage data.
+            pub fn new(data: RamSwapUsage) -> Self {
+                Self { data }
+            }
+        }
+
+        impl Renderable for RamGaugeWidget {
+            fn render(&self, area: Rect, f: &mut Frame) {
+                let percent = if self.data.total > 0 {
+                    (self.data.used as f32 / self.data.total as f32 * 100.0) as u16
+                } else {
+                    0
+                };
+                let gauge = Gauge::default()
+                    .block(Block::default().borders(Borders::ALL).title("RAM"))
+                    .gauge_style(Style::default().fg(Color::Cyan))
+                    .percent(percent);
+                f.render_widget(gauge, area);
+            }
+        }
+
+        /// Widget that displays a sparkline of network traffic.
+        pub struct NetworkSparklineWidget {
+            pub data: Vec<u64>,
+        }
+
+        impl NetworkSparklineWidget {
+            /// Create a new `NetworkSparklineWidget` with the given data.
+            pub fn new(data: Vec<u64>) -> Self {
+                Self { data }
+            }
+        }
+
+        impl Renderable for NetworkSparklineWidget {
+            fn render(&self, area: Rect, f: &mut Frame) {
+                let data_u16 = self
+                    .data
+                    .iter()
+                    .map(|x| (*x as u16).min(u16::MAX))
+                    .collect::<Vec<u16>>();
+                let sparkline = Sparkline::default()
+                    .block(Block::default().borders(Borders::ALL).title("Network"))
+                    .data(&data_u16)
+                    .style(Style::default().fg(Color::Yellow));
+                f.render_widget(sparkline, area);
+            }
+        }
+
+        /// Widget that displays disk I/O as two gauges.
+        pub struct DiskIOBarWidget {
+            pub data: DiskIOStats,
+        }
+
+        impl DiskIOBarWidget {
+            /// Create a new `DiskIOBarWidget` with the given I/O statistics.
+            pub fn new(data: DiskIOStats) -> Self {
+                Self { data }
+            }
+        }
+
+        impl Renderable for DiskIOBarWidget {
+            fn render(&self, area: Rect, f: &mut Frame) {
+                let total = self.data.read_bytes + self.data.write_bytes;
+                let read_percent = if total > 0 {
+                    (self.data.read_bytes as f32 / total as f32 * 100.0) as u16
+                } else {
+                    0
+                };
+                let write_percent = if total > 0 {
+                    (self.data.write_bytes as f32 / total as f32 * 100.0) as u16
+                } else {
+                    0
+                };
+
+                let chunks = Layout::horizontal([
+                    Constraint::Percentage(50),
+                    Constraint::Percentage(50),
+                ])
+                .split(area);
+
+                let read_gauge = Gauge::default()
+                    .block(Block::default().borders(Borders::ALL).title("Read"))
+                    .gauge_style(Style::default().fg(Color::Blue))
+                    .percent(read_percent);
+                f.render_widget(read_gauge, chunks[0]);
+
+                let write_gauge = Gauge::default()
+                    .block(Block::default().borders(Borders::ALL).title("Write"))
+                    .gauge_style(Style::default().fg(Color::Magenta))
+                    .percent(write_percent);
+                f.render_widget(write_gauge, chunks[1]);
+            }
+        }
+
+        /// Widget that displays a table of processes.
+        pub struct ProcessTableWidget {
+            pub data: Vec<ProcessInfo>,
+            pub sort_order: SortOrder,
+        }
+
+        impl ProcessTableWidget {
+            /// Create a new `ProcessTableWidget` with the given process data and sort order.
+            pub fn new(data: Vec<ProcessInfo>, sort_order: SortOrder) -> Self {
+                Self { data, sort_order }
+            }
+        }
+
+        impl Renderable for ProcessTableWidget {
+            fn render(&self, area: Rect, f: &mut Frame) {
+                // Build a sorted slice of references to avoid cloning ProcessInfo.
+                let mut sorted: Vec<&ProcessInfo> = self.data.iter().collect();
+                match self.sort_order {
+                    SortOrder::Cpu => sorted.sort_by(|a, b| {
+                        b.cpu_percent
+                            .partial_cmp(&a.cpu_percent)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    }),
+                    SortOrder::Mem => sorted.sort_by(|a, b| b.mem_bytes.cmp(&a.mem_bytes)),
+                }
+
+                let rows = sorted
+                    .iter()
+                    .map(|p| {
+                        Row::new(vec![
+                            Cell::from(p.pid.to_string()),
+                            Cell::from(&p.name),
+                            Cell::from(format!("{:.1}%", p.cpu_percent)),
+                            Cell::from(format!("{} MiB", p.mem_bytes / (1024 * 1024))),
+                        ])
+                    })
+                    .collect::<Vec<Row>>();
+
+                let table = Table::new(rows)
+                    .header(
+                        Row::new(vec!["PID", "Name", "CPU%", "MEM"])
+                            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                    )
+                    .block(Block::default().borders(Borders::ALL).title("Processes"))
+                    .widths(&[
+                        Constraint::Length(6),
+                        Constraint::Min(20),
+                        Constraint::Length(8),
+                        Constraint::Length(10),
+                    ]);
+
+                f.render_widget(table, area);
+            }
+        }
+}
