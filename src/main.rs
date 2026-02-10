@@ -240,7 +240,7 @@ pub mod collector {
                 // Refresh all data; map sysinfo errors to our error type.
                 match self.sys.refresh_all() {
                     Ok(_) => {}
-                    Err(e) => return Err(crate::core::errors::SysmonError::SysInfo(e)),
+                    Err(e) => return Err(crate::errors::SysmonError::SysInfo(e)),
                 }
 
                 // CPU core usage
@@ -286,15 +286,16 @@ pub mod collector {
                     disk_read += disk.read_bytes();
                     disk_write += disk.write_bytes();
                 }
-                let disk_io = crate::core::types::DiskIOStats {
-                    read_bytes: disk_read,
-                    write_bytes: disk_write,
-                };
+let disk_io = crate::types::DiskIOStats {
+            read_bytes: disk_read,
+            write_bytes: disk_write,
+        };
+
 
                 // Process information
                 let mut processes = Vec::new();
                 for (pid, process) in self.sys.processes() {
-                    processes.push(crate::core::types::ProcessInfo {
+                    processes.push(crate::types::ProcessInfo {
                         pid: pid.as_u32() as i32,
                         name: process.name().to_string(),
                         cpu_percent: process.cpu_usage(),
@@ -308,7 +309,7 @@ pub mod collector {
                         .unwrap_or(Ordering::Equal)
                 });
 
-                Ok(crate::core::types::SystemMetrics {
+                Ok(crate::types::SystemMetrics {
                     cpu,
                     ram,
                     swap,
@@ -330,9 +331,12 @@ pub mod widgets {
             },
         };
 
-        use crate::core::types::{
-            CpuCoreUsage, RamSwapUsage, DiskIOStats,
-            ProcessInfo, SortOrder,
+        use crate::types::{
+            CpuCoreUsage,
+            RamSwapUsage,
+            DiskIOStats,
+            ProcessInfo,
+            SortOrder,
         };
 
         /// Trait for widgets that can render themselves into a `ratatui::Frame`.
@@ -590,12 +594,12 @@ pub mod layout {
 }
 
 pub mod app {
-        use crate::core::errors::SysmonError;
-        use crate::core::types::{
+        use crate::errors::SysmonError;
+        use crate::types::{
             CpuCoreUsage, DiskIOStats, NetworkStats, ProcessInfo, RamSwapUsage, SortOrder,
             SystemMetrics,
         };
-        use crate::data::collector::Collector;
+        use crate::collector::Collector;
         use crate::ui::layout::LayoutManager;
         use crate::ui::widgets::{
             CpuBarWidget, DiskIOBarWidget, NetworkSparklineWidget, ProcessTableWidget,
