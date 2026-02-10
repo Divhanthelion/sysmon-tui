@@ -1,0 +1,7 @@
+[package]
+name = "sysmon-tui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Dependencies will be added after code review
