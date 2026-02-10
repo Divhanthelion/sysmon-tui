@@ -515,3 +515,113 @@ pub mod layout {
             }
         }
 }
+
+pub mod app {
+        use crate::core::errors::SysmonError;
+        use crate::core::types::{
+            CpuCoreUsage, DiskIOStats, NetworkStats, ProcessInfo, RamSwapUsage, SortOrder,
+            SystemMetrics,
+        };
+        use crate::data::collector::Collector;
+        use crate::ui::layout::LayoutManager;
+        use crate::ui::widgets::{
+            CpuBarWidget, DiskIOBarWidget, NetworkSparklineWidget, ProcessTableWidget,
+            RamGaugeWidget,
+        };
+        use crossterm::event::{KeyCode, KeyEvent};
+        use ratatui::layout::Rect;
+        use ratatui::Frame;
+
+        /// Main application state and rendering loop.
+        pub struct AppState {
+            pub metrics: SystemMetrics,
+            pub sort_order: SortOrder,
+        }
+
+        impl AppState {
+            /// Create a new application state with empty metrics and default sort order.
+            pub fn new() -> Self {
+                Self {
+                    metrics: SystemMetrics {
+                        cpu: Vec::new(),
+                        ram: RamSwapUsage { used: 0, total: 0 },
+                        swap: RamSwapUsage { used: 0, total: 0 },
+                        network: NetworkStats {
+                            received_bytes: 0,
+                            transmitted_bytes: 0,
+                        },
+                        disk_io: DiskIOStats {
+                            read_bytes: 0,
+                            write_bytes: 0,
+                        },
+                        processes: Vec::new(),
+                    },
+                    sort_order: SortOrder::Cpu,
+                }
+            }
+
+            /// Update the metrics snapshot using the provided collector.
+            ///
+            /// The collector is expected to expose a `collect` method that returns
+            /// `Result<SystemMetrics, SysmonError>`.  The returned metrics replace the
+            /// current snapshot.
+            pub fn update_metrics(
+                &mut self,
+                collector: &mut Collector,
+            ) -> Result<(), SysmonError> {
+                // The exact signature of `Collector::collect` is not specified in the
+                // dependency notes, but we assume it returns a Result with the same error
+                // type as `SysmonError`.  If the signature differs, this method will need
+                // to be adjusted accordingly.
+                let new_metrics = collector.collect()?;
+                self.metrics = new_metrics;
+                Ok(())
+            }
+
+            /// Handle a key event from the user.
+            ///
+            /// Currently only two keys are recognised:
+            /// * `c` – switch to CPU sort order
+            /// * `m` – switch to memory sort order
+            pub fn handle_input(&mut self, key: KeyEvent) {
+                match key.code {
+                    KeyCode::Char('c') | KeyCode::Char('C') => self.sort_order = SortOrder::Cpu,
+                    KeyCode::Char('m') | KeyCode::Char('M') => self.sort_order = SortOrder::Mem,
+                    _ => {}
+                }
+            }
+
+            /// Render the current state to the provided frame.
+            ///
+            /// The layout is calculated from the frame's size, and each widget receives
+            /// a clone of the relevant data slice.
+            pub fn render(&self, f: &mut Frame) {
+                let size = f.size();
+                let layout = LayoutManager::new(size);
+
+                // CPU usage bar
+                CpuBarWidget::new(self.metrics.cpu.clone())
+                    .render(layout.cpu_area, f);
+
+                // RAM usage gauge
+                RamGaugeWidget::new(self.metrics.ram.clone())
+                    .render(layout.ram_area, f);
+
+                // Network sparkline (received + transmitted)
+                let net_data = vec![
+                    self.metrics.network.received_bytes,
+                    self.metrics.network.transmitted_bytes,
+                ];
+                NetworkSparklineWidget::new(net_data)
+                    .render(layout.net_area, f);
+
+                // Disk I/O bar
+                DiskIOBarWidget::new(self.metrics.disk_io.clone())
+                    .render(layout.disk_area, f);
+
+                // Process table
+                ProcessTableWidget::new(self.metrics.processes.clone(), self.sort_order)
+                    .render(layout.proc_area, f);
+            }
+        }
+}
