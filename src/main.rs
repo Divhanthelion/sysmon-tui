@@ -3,7 +3,7 @@
 pub mod main {
     use std::error::Error;
     use std::time::Duration;
-    use std::sync::mpsc::{channel, Sender};
+    use std::sync::mpsc::channel;
 
     use crossterm::{
         execute,
@@ -11,8 +11,8 @@ pub mod main {
     };
     use ratatui::{backend::CrosstermBackend, Terminal};
 
-    use crate::ui::event::{AppEvent, EventHandler};
-    use crate::ui::app::AppState;
+    use crate::event::{AppEvent, EventHandler};
+    use crate::app::AppState;
 
     /// Entry point of the application.
     ///
@@ -79,8 +79,10 @@ pub mod main {
 }
 
 fn main() {
-    println!("Starting application...");
-    todo!("Wire up application entry point")
+    if let Err(e) = crate::main::main() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
 }
 
 pub mod errors {
@@ -600,7 +602,7 @@ pub mod app {
             RamGaugeWidget,
         };
         use crossterm::event::{KeyCode, KeyEvent};
-        use ratatui::layout::Rect;
+        
         use ratatui::Frame;
 
         /// Main application state and rendering loop.
