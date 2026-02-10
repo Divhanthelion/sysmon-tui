@@ -9,3 +9,17 @@ fn main() {
     println!("Starting application...");
     todo!("Wire up application entry point")
 }
+
+pub mod errors {
+        use std::io;
+        use sysinfo;
+
+        /// Unified error type for sysmon.
+        #[derive(Debug)]
+        pub enum SysmonError {
+            Io(io::Error),
+            SysInfo(sysinfo::SystemTimeError),
+        }
+
+        impl std::error::Error for SysmonError {}
+}
