@@ -86,3 +86,53 @@ pub mod event {
             }
         }
 }
+
+pub mod types {
+        /// CPU usage for a single core.
+        pub struct CpuCoreUsage {
+            pub core_id: usize,
+            pub usage_percent: f32,
+        }
+
+        /// RAM or swap usage in bytes.
+        pub struct RamSwapUsage {
+            pub used: u64,
+            pub total: u64,
+        }
+
+        /// Cumulative network statistics.
+        pub struct NetworkStats {
+            pub received_bytes: u64,
+            pub transmitted_bytes: u64,
+        }
+
+        /// Cumulative disk I/O statistics.
+        pub struct DiskIOStats {
+            pub read_bytes: u64,
+            pub write_bytes: u64,
+        }
+
+        /// Snapshot of a single process.
+        pub struct ProcessInfo {
+            pub pid: i32,
+            pub name: String,
+            pub cpu_percent: f32,
+            pub mem_bytes: u64,
+        }
+
+        /// Sorting criteria for the process list.
+        pub enum SortOrder {
+            Cpu,
+            Mem,
+        }
+
+        /// Aggregated snapshot of all monitored metrics.
+        pub struct SystemMetrics {
+            pub cpu: Vec<CpuCoreUsage>,
+            pub ram: RamSwapUsage,
+            pub swap: RamSwapUsage,
+            pub network: NetworkStats,
+            pub disk_io: DiskIOStats,
+            pub processes: Vec<ProcessInfo>,
+        }
+}
