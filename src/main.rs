@@ -236,7 +236,7 @@ pub mod collector {
             /// underlying sysinfo library fails to refresh data.
             pub fn collect(
                 &mut self,
-            ) -> Result<crate::core::types::SystemMetrics, crate::core::errors::SysmonError> {
+            ) -> Result<crate::types::SystemMetrics, crate::errors::SysmonError> {
                 // Refresh all data; map sysinfo errors to our error type.
                 match self.sys.refresh_all() {
                     Ok(_) => {}
@@ -249,20 +249,20 @@ pub mod collector {
                     .processors()
                     .iter()
                     .enumerate()
-                    .map(|(idx, proc)| crate::core::types::CpuCoreUsage {
+                    .map(|(idx, proc)| crate::types::CpuCoreUsage {
                         core_id: idx,
                         usage_percent: proc.cpu_usage(),
                     })
                     .collect::<Vec<_>>();
 
                 // RAM usage
-                let ram = crate::core::types::RamSwapUsage {
+                let ram = crate::types::RamSwapUsage {
                     used: self.sys.used_memory() * 1024,
                     total: self.sys.total_memory() * 1024,
                 };
 
                 // Swap usage
-                let swap = crate::core::types::RamSwapUsage {
+                let swap = crate::types::RamSwapUsage {
                     used: self.sys.used_swap() * 1024,
                     total: self.sys.total_swap() * 1024,
                 };
@@ -274,7 +274,7 @@ pub mod collector {
                     net_recv += data.received();
                     net_trans += data.transmitted();
                 }
-                let network = crate::core::types::NetworkStats {
+                let network = crate::types::NetworkStats {
                     received_bytes: net_recv,
                     transmitted_bytes: net_trans,
                 };
