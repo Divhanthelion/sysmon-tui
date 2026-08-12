@@ -1,2 +1,12 @@
 /target/
 .DS_Store
+
+# GH_Audit hygiene
+.DS_Store
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+target/
+dist/
